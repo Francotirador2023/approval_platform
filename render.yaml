@@ -1,0 +1,22 @@
+services:
+  # Backend Service
+  - type: web
+    name: approval-backend
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn main:app -k uvicorn.workers.UvicornWorker
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+
+  # Frontend Static Site
+  - type: web
+    name: approval-frontend
+    env: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0

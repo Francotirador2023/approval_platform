@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: approval_backend
+    restart: always
+    environment:
+      - DATABASE_URL=sqlite:///./approval.db # Cambiar a PostgreSQL en prod
+      - SECRET_KEY=change_this_secret_in_prod
+      - ALLOWED_ORIGINS=http://localhost,http://tu-dominio.com
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/approval.db:/app/approval.db # Persistencia SQLite simple
+
+  frontend:
+    build: ./frontend
+    container_name: approval_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend

@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+python-multipart
+python-dotenv
+imap-tools
+aiosmtplib
+svglib
+jinja2
+gunicorn
+python-jose[cryptography]
+passlib[bcrypt]
