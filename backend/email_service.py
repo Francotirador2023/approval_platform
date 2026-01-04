@@ -50,39 +50,65 @@ def send_email(to_email: str, subject: str, body: str):
 def process_email_requests():
     """
     Connect to IMAP, fetch UNSEEN emails, and create requests.
-    Using imap-tools for simplicity.
+    Returns a dict with statistics: {'processed': int, 'created': int, 'skipped': int, 'errors': list}
     """
+    stats = {
+        "processed": 0,
+        "created": 0,
+        "skipped": 0,
+        "errors": []
+    }
+
     if EMAIL_ACCOUNT == "test@example.com":
         print("Email integration skipped: No valid credentials provided.")
-        return
+        stats["errors"].append("Email integration skipped: No valid credentials provided.")
+        return stats
 
     try:
         with MailBox(IMAP_SERVER).login(EMAIL_ACCOUNT, EMAIL_PASSWORD) as mailbox:
-            # Fetch unseen emails
-            for msg in mailbox.fetch(AND(seen=False)):
-                print(f"Processing email from {msg.from_} subject: {msg.subject}")
-                
-                # Check if user exists by email helper
-                sender_email = msg.from_
-                
-                with Session(engine) as session:
-                    user = session.exec(select(User).where(User.email == sender_email)).first()
+            # Fetch unseen emails, limit to 50 recent
+            for msg in mailbox.fetch(AND(seen=False), limit=50, reverse=True):
+                stats["processed"] += 1
+                try:
+                    print(f"DEBUG SYNC: Processing email from '[{msg.from_}]' Subject: '{msg.subject}'", flush=True)
                     
-                    if not user:
-                        # Optional: Auto-create user or skip
-                        print(f"User {sender_email} not found. Skipping.")
-                        continue
+                    # Check if user exists by email helper (case-insensitive)
+                    sender_email = msg.from_.strip().lower()
+                    
+                    with Session(engine) as session:
+                        # Use ilike for case-insensitive match if supported, or just compare in python for safety with SQLite
+                        # SQLite default collation might be case insensitive but let's be explicit
+                        statement = select(User).where(User.email == sender_email)
+                        user = session.exec(statement).first()
                         
-                    # Create Request
-                    new_request = Request(
-                        title=msg.subject,
-                        description=msg.text or msg.html,
-                        requester_id=user.id,
-                        status=RequestStatus.PENDING
-                    )
-                    session.add(new_request)
-                    session.commit()
-                    print(f"Request created: {new_request.id}")
+                        if not user:
+                            # Try finding without lower() just in case DB has mixed case
+                            user = session.exec(select(User).where(User.email == msg.from_.strip())).first()
+
+                        if not user:
+                            print(f"DEBUG SYNC: User '{sender_email}' not found in DB. Skipping.", flush=True)
+                            stats["skipped"] += 1
+                            continue
+                        
+                        print(f"DEBUG SYNC: User found: {user.email}", flush=True)
+                            
+                        # Create Request
+                        new_request = Request(
+                            title=msg.subject,
+                            description=msg.text or msg.html or "No content",
+                            requester_id=user.id,
+                            status=RequestStatus.PENDING
+                        )
+                        session.add(new_request)
+                        session.commit()
+                        print(f"Request created: {new_request.id}")
+                        stats["created"] += 1
+                except Exception as inner_e:
+                    print(f"Error processing specific email: {inner_e}")
+                    stats["errors"].append(f"Error processing email from {msg.from_}: {str(inner_e)}")
                     
     except Exception as e:
         print(f"Error processing emails: {e}")
+        stats["errors"].append(f"Global error: {str(e)}")
+    
+    return stats

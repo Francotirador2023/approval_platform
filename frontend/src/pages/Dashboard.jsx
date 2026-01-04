@@ -106,8 +106,15 @@ const Dashboard = () => {
                             try {
                                 btn.disabled = true;
                                 btn.innerHTML = '<span class="animate-spin inline-block mr-2">↻</span> Sincronizando...';
-                                await api.post('/sync-emails');
+                                const response = await api.post('/sync-emails');
                                 handleRequestCreated(); // Refresh list
+
+                                const stats = response.data.stats;
+                                if (stats) {
+                                    alert(`Sincronización completada:\n- Procesados: ${stats.processed}\n- Creados: ${stats.created}\n- Omitidos (usuario desconocido): ${stats.skipped}\n- Errores: ${stats.errors.length}`);
+                                } else {
+                                    alert('Sincronización completada.');
+                                }
                             } catch (error) {
                                 console.error(error);
                                 alert('Error al sincronizar correos');

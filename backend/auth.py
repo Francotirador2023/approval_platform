@@ -17,7 +17,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+    result = pwd_context.verify(plain_password, hashed_password)
+    print(f"DEBUG AUTH: plain={plain_password}, hash={hashed_password}, result={result}", flush=True)
+    return result
 
 def get_password_hash(password):
     return pwd_context.hash(password)

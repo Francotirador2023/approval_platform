@@ -131,7 +131,7 @@ def test_process_email_requests_creates_request(session: Session):
             MockSession.return_value.__enter__.return_value = session
             
             # Run function
-            process_email_requests()
+            stats = process_email_requests()
             
             # Assert Request created
             req = session.exec(select(Request).where(Request.title == "New Request via Email")).first()
@@ -139,3 +139,8 @@ def test_process_email_requests_creates_request(session: Session):
             assert req.description == "Description from email body"
             assert req.requester_id == user.id
             assert req.status == RequestStatus.PENDING
+            
+            # Verify stats
+            assert stats["processed"] == 1
+            assert stats["created"] == 1
+            assert stats["skipped"] == 0

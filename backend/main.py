@@ -37,8 +37,8 @@ async def sync_emails_endpoint():
     Trigger email synchronization manually.
     """
     try:
-        process_email_requests()
-        return {"message": "Email synchronization completed"}
+        stats = process_email_requests()
+        return {"message": "Email synchronization completed", "stats": stats}
     except Exception as e:
         return {"error": str(e)}
 
